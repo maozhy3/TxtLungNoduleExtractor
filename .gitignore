@@ -121,3 +121,11 @@ temp/
 
 # model data
 models/
+
+# test file
+test*
+
+# release packages
+release*
+
+__pycache__

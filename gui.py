@@ -2,32 +2,26 @@
 """
 GUI界面 - 医疗影像报告批量预测工具
 """
+# 标准库
+import re
 import sys
-import os
-import importlib.util
-from pathlib import Path
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, scrolledtext
-import pandas as pd
 from io import StringIO
+from pathlib import Path
+from tkinter import filedialog, messagebox, scrolledtext, ttk
+from typing import Optional
 
-# 设置路径
+# 第三方库
+import pandas as pd
+
+# 本地模块
 sys.path.insert(0, str(Path(__file__).parent))
-
-# 导入核心业务逻辑
+from config_loader import load_config
 from core import batch_predict
-import config
 
-# 尝试加载外层配置
-outer = os.path.join(os.path.dirname(sys.executable), 'config.py')
-if os.path.exists(outer):
-    spec = importlib.util.spec_from_file_location("external_config", outer)
-    cfg = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cfg)
-    for key in dir(cfg):
-        if not key.startswith('_'):
-            setattr(config, key, getattr(cfg, key))
+# 加载配置
+config = load_config()
 
 
 class RedirectText:

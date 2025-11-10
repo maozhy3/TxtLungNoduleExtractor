@@ -1,16 +1,28 @@
 # config.py
 import os
+import sys
 from pathlib import Path
 
+
+def _get_base_path() -> Path:
+    """获取基础路径，兼容开发和打包环境"""
+    if getattr(sys, 'frozen', False):
+        # 打包后的环境
+        return Path(sys.executable).parent
+    else:
+        # 开发环境
+        return Path(__file__).parent
+
+
 # ===== 输入输出 =====
-EXCEL_PATH      = Path(__file__).with_name("test.xlsx")      # 待预测文件
-OUTPUT_PATH     = Path(__file__).with_name("test_results.xlsx")  # 结果保存
+_ROOT = _get_base_path()
+EXCEL_PATH = _ROOT / "test.xlsx"  # 待预测文件
+OUTPUT_PATH = _ROOT / "test_results.xlsx"  # 结果保存
 
 # ===== 模型列表 =====
 # 支持单个字符串或列表；也可使用通配符，由脚本自动展开
-_ROOT = Path(__file__).parent
 MODEL_PATHS = [
-    (_ROOT / "models" / "qwen-medical-lora-251106-q4_k_m.gguf").as_posix()
+    str(_ROOT / "models" / "qwen-medical-lora-251106-q4_k_m.gguf")
 ]
 # ===== llama.cpp 推理参数 =====
 LLAMA_N_CTX        = 2048   # 上下文长度

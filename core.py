@@ -2,16 +2,18 @@
 核心业务逻辑模块
 包含文本预处理、数值提取、模型预测等功能
 """
+# 标准库
+import pickle
 import re
 import time
-import json
-import pickle
-from pathlib import Path
-from typing import Optional
-from llama_cpp import Llama
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from tqdm import tqdm
+from pathlib import Path
+from typing import Any, Optional, Set, Tuple
+
+# 第三方库
 import pandas as pd
+from llama_cpp import Llama
+from tqdm import tqdm
 
 
 # ==================== 文本预处理 ====================
@@ -115,7 +117,7 @@ def extract_max_value(text: str, raw_text: str = "") -> Optional[float]:
 
 # ==================== 模型预测 ====================
 
-def predict_single(llm: Llama, input_text: str, prompt_template: str) -> tuple[Optional[float], float]:
+def predict_single(llm: Llama, input_text: str, prompt_template: str) -> Tuple[Optional[float], float]:
     """
     对单个输入进行预测
     
@@ -160,7 +162,7 @@ def predict_single(llm: Llama, input_text: str, prompt_template: str) -> tuple[O
 
 # ==================== 多进程支持 ====================
 
-def _worker_init(model_path: str, n_ctx: int, n_threads: int, n_gpu_layers: int):
+def _worker_init(model_path: str, n_ctx: int, n_threads: int, n_gpu_layers: int) -> None:
     """进程初始化：每个进程加载一次模型"""
     global _worker_llm, _worker_prompt_template
     _worker_llm = Llama(
@@ -172,7 +174,7 @@ def _worker_init(model_path: str, n_ctx: int, n_threads: int, n_gpu_layers: int)
     )
 
 
-def _worker_predict(args):
+def _worker_predict(args: Tuple[int, str, str]) -> Tuple[int, Optional[float], float]:
     """工作进程：使用已加载的模型进行预测"""
     idx, input_text, prompt_template = args
     pred_value, infer_time = predict_single(_worker_llm, input_text, prompt_template)
@@ -198,8 +200,13 @@ class CheckpointManager:
         """获取指定模型的检查点文件路径"""
         return self.checkpoint_dir / f"{model_name}_checkpoint.pkl"
     
-    def save_checkpoint(self, model_name: str, predictions: list, 
-                       processed_indices: set, total_time: float):
+    def save_checkpoint(
+        self, 
+        model_name: str, 
+        predictions: list, 
+        processed_indices: Set[int], 
+        total_time: float
+    ) -> None:
         """保存检查点"""
         checkpoint_path = self.get_checkpoint_path(model_name)
         checkpoint_data = {
@@ -215,7 +222,7 @@ class CheckpointManager:
         except Exception as e:
             print(f"⚠ 保存检查点失败: {e}")
     
-    def load_checkpoint(self, model_name: str) -> Optional[dict]:
+    def load_checkpoint(self, model_name: str) -> Optional[dict[str, Any]]:
         """加载检查点"""
         checkpoint_path = self.get_checkpoint_path(model_name)
         
@@ -230,7 +237,7 @@ class CheckpointManager:
             print(f"⚠ 加载检查点失败: {e}")
             return None
     
-    def clear_checkpoint(self, model_name: str):
+    def clear_checkpoint(self, model_name: str) -> None:
         """清除检查点文件"""
         checkpoint_path = self.get_checkpoint_path(model_name)
         if checkpoint_path.exists():
@@ -242,7 +249,7 @@ class CheckpointManager:
 
 # ==================== 批量预测 ====================
 
-def batch_predict(df: pd.DataFrame, model_path: str, config) -> tuple[list, float, str]:
+def batch_predict(df: pd.DataFrame, model_path: str, config: Any) -> Tuple[list, float, str]:
     """
     批量预测（支持断点续传）
     

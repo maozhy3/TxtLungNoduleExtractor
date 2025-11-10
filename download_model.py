@@ -4,12 +4,12 @@
 Qwen2.5 模型下载脚本
 支持从 Hugging Face 下载 GGUF 格式的量化模型
 """
-
-import os
+# 标准库
 import sys
 from pathlib import Path
+from typing import Dict
+from urllib.error import HTTPError, URLError
 from urllib.request import urlretrieve
-from urllib.error import URLError, HTTPError
 
 
 # 模型配置
@@ -32,7 +32,7 @@ MODELS = {
 MODELS_DIR = Path("models")
 
 
-def show_progress(block_num, block_size, total_size):
+def show_progress(block_num: int, block_size: int, total_size: int) -> None:
     """显示下载进度"""
     downloaded = block_num * block_size
     if total_size > 0:
@@ -46,7 +46,7 @@ def show_progress(block_num, block_size, total_size):
         sys.stdout.flush()
 
 
-def download_model(model_info):
+def download_model(model_info: Dict[str, str]) -> bool:
     """下载模型文件"""
     filename = model_info["filename"]
     url = model_info["url"]
@@ -101,7 +101,7 @@ def download_model(model_info):
         return False
 
 
-def main():
+def main() -> None:
     """主函数"""
     print("=" * 60)
     print("Qwen2.5 模型下载工具")

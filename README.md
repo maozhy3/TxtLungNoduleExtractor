@@ -2,6 +2,8 @@
 
 基于 llama.cpp 和 Qwen 医疗模型的肺结节尺寸自动提取工具，支持从影像报告中智能提取病灶最大直径。
 
+> **平台支持**：目前仅提供 Windows 平台支持。Linux/Mac 用户可以从源码运行，但打包的 exe 版本仅适用于 Windows。
+
 ## 功能特性
 
 - 🖥️ 图形化界面（GUI）和命令行两种使用方式
@@ -34,6 +36,8 @@ pip install -r requirements.txt
 ```
 
 ### 3. 下载模型
+
+> **注意**：当前 Release 版本不包含模型文件，需要单独下载。
 
 ```bash
 python download_model.py
@@ -113,10 +117,12 @@ Excel 文件需包含 `yxbx` 列（影像表现）：
 
 ## 打包部署
 
+> **注意**：打包功能仅支持 Windows 平台。
+
 ### 打包成 exe
 
 ```bash
-# 运行打包脚本
+# 运行打包脚本（仅 Windows）
 build_gui.bat
 ```
 
@@ -131,8 +137,12 @@ dist/医疗影像报告预测工具/
 
 ### 部署到离线电脑
 
-1. 将 `dist/医疗影像报告预测工具/` 整个文件夹复制到目标电脑
-2. 确保 `models/` 目录包含模型文件
+> **重要**：
+> - Release 版本不包含模型文件，需要手动下载并放入 `models/` 目录
+> - 仅支持 Windows 平台
+
+1. 将 `dist/医疗影像报告预测工具/` 整个文件夹复制到目标 Windows 电脑
+2. **手动下载模型文件**并放入 `models/` 目录（Release 不包含）
 3. 确保 `_vcredist/vc_redist.x64.exe` 存在
 4. 双击 `医疗影像报告预测工具.exe` 运行
 

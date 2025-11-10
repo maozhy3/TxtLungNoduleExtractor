@@ -1,10 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+import sys
+
+# 获取 conda 环境路径
+conda_env = r'C:\Users\User\miniconda3\envs\node_extractor'
+llama_cpp_lib = os.path.join(conda_env, 'Lib', 'site-packages', 'llama_cpp', 'lib')
+
+# 收集 llama_cpp 的 DLL 文件
+llama_binaries = []
+if os.path.exists(llama_cpp_lib):
+    for file in os.listdir(llama_cpp_lib):
+        if file.endswith('.dll'):
+            llama_binaries.append((os.path.join(llama_cpp_lib, file), 'llama_cpp/lib'))
 
 a = Analysis(
     ['gui.py'],
     pathex=[],
-    binaries=[],
+    binaries=llama_binaries,
     datas=[],
     hiddenimports=['pandas', 'openpyxl', 'llama_cpp', 'tqdm', 'tkinter'],
     hookspath=['.'],

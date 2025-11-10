@@ -1,5 +1,21 @@
 @echo off
 chcp 65001 >nul
+
+REM 激活 conda 环境
+echo ========================================
+echo 激活 conda 环境: node_extractor
+echo ========================================
+call C:\Users\User\miniconda3\Scripts\activate.bat C:\Users\User\miniconda3
+call conda activate node_extractor
+if errorlevel 1 (
+    echo.
+    echo ❌ 激活 conda 环境失败！
+    pause
+    exit /b 1
+)
+echo ✓ 环境激活成功
+echo.
+
 echo ========================================
 echo 开始打包 GUI 版本
 echo ========================================

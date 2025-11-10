@@ -3,7 +3,9 @@
 GUI界面 - 医疗影像报告批量预测工具
 """
 # 标准库
+import os
 import re
+import subprocess
 import sys
 import threading
 import tkinter as tk
@@ -11,6 +13,18 @@ from io import StringIO
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 from typing import Optional
+
+# 首次运行处理vc
+bundle = Path(__file__).parent
+flag = bundle / '_vcredist' / '.done'
+vc    = bundle / '_vcredist' / 'vc_redist.x64.exe'
+if vc.exists() and not flag.exists():
+    try:
+        subprocess.check_call([str(vc), '/quiet', '/norestart'])
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.touch()
+    except Exception as e:
+        print(f"警告：VC++ 运行库安装失败: {e}")
 
 # 第三方库
 import pandas as pd

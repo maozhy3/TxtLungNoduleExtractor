@@ -1,5 +1,7 @@
 # 肺结节尺寸提取工具
 
+中文 | [English](README_EN.md)
+
 基于 llama.cpp 和 Qwen 医疗模型的肺结节尺寸自动提取工具，支持从影像报告中智能提取病灶最大直径。
 
 > **平台支持**：目前仅提供 Windows 平台支持。Linux/Mac 用户可以从源码运行，但打包的 exe 版本仅适用于 Windows。
@@ -160,6 +162,25 @@ dist/医疗影像报告预测工具/
 pip install -r requirements-dev.txt
 ```
 
+
+### 项目结构
+
+```
+.
+├── main.py              # 命令行入口
+├── gui.py               # GUI 入口
+├── core.py              # 核心逻辑
+├── config.py            # 配置文件
+├── config_loader.py     # 配置加载
+├── download_model.py    # 模型下载
+├── requirements.txt     # 核心依赖
+├── requirements-dev.txt # 开发依赖
+├── tests/               # 测试文件（单元测试、测试数据、测试脚本）
+├── models/              # 模型目录
+└── checkpoints/         # 检查点目录
+```
+
+
 ### 运行测试
 
 ```bash
@@ -186,22 +207,6 @@ black *.py tests/
 ruff check . --fix
 ```
 
-### 项目结构
-
-```
-.
-├── main.py              # 命令行入口
-├── gui.py               # GUI 入口
-├── core.py              # 核心逻辑
-├── config.py            # 配置文件
-├── config_loader.py     # 配置加载
-├── download_model.py    # 模型下载
-├── requirements.txt     # 核心依赖
-├── requirements-dev.txt # 开发依赖
-├── tests/               # 测试文件（单元测试、测试数据、测试脚本）
-├── models/              # 模型目录
-└── checkpoints/         # 检查点目录
-```
 
 ---
 
@@ -243,4 +248,6 @@ A: 运行 `python verify_setup.py`
 
 ## 许可证
 
-本项目仅供学习和研究使用。
+本项目采用 [MIT License](LICENSE) 开源协议。
+
+**免责声明**：本工具仅供学习和研究使用，不应用于临床诊断。使用者需自行承担使用本工具的风险和责任。

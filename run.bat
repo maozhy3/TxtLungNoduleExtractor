@@ -1,4 +1,4 @@
 @echo off
-call venv\Scripts\activate.bat
-python main.py
+chcp 65001 >nul
+python gui.py
 pause

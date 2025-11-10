@@ -131,3 +131,6 @@ release*
 __pycache__
 
 build_tmp/
+
+# VC++ Redistributable (download from Microsoft)
+_vcredist/*.exe

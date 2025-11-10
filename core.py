@@ -4,6 +4,8 @@
 """
 import re
 import time
+import json
+import pickle
 from pathlib import Path
 from typing import Optional
 from llama_cpp import Llama
@@ -177,11 +179,72 @@ def _worker_predict(args):
     return idx, pred_value, infer_time
 
 
+# ==================== 检查点管理 ====================
+
+class CheckpointManager:
+    """管理预测进度的检查点"""
+    
+    def __init__(self, checkpoint_dir: Path = None, save_interval: int = 10):
+        """
+        Args:
+            checkpoint_dir: 检查点保存目录
+            save_interval: 每处理多少条数据保存一次检查点
+        """
+        self.checkpoint_dir = checkpoint_dir or Path("checkpoints")
+        self.checkpoint_dir.mkdir(exist_ok=True)
+        self.save_interval = save_interval
+    
+    def get_checkpoint_path(self, model_name: str) -> Path:
+        """获取指定模型的检查点文件路径"""
+        return self.checkpoint_dir / f"{model_name}_checkpoint.pkl"
+    
+    def save_checkpoint(self, model_name: str, predictions: list, 
+                       processed_indices: set, total_time: float):
+        """保存检查点"""
+        checkpoint_path = self.get_checkpoint_path(model_name)
+        checkpoint_data = {
+            'predictions': predictions,
+            'processed_indices': processed_indices,
+            'total_time': total_time,
+            'timestamp': time.time()
+        }
+        
+        try:
+            with open(checkpoint_path, 'wb') as f:
+                pickle.dump(checkpoint_data, f)
+        except Exception as e:
+            print(f"⚠ 保存检查点失败: {e}")
+    
+    def load_checkpoint(self, model_name: str) -> Optional[dict]:
+        """加载检查点"""
+        checkpoint_path = self.get_checkpoint_path(model_name)
+        
+        if not checkpoint_path.exists():
+            return None
+        
+        try:
+            with open(checkpoint_path, 'rb') as f:
+                checkpoint_data = pickle.load(f)
+            return checkpoint_data
+        except Exception as e:
+            print(f"⚠ 加载检查点失败: {e}")
+            return None
+    
+    def clear_checkpoint(self, model_name: str):
+        """清除检查点文件"""
+        checkpoint_path = self.get_checkpoint_path(model_name)
+        if checkpoint_path.exists():
+            try:
+                checkpoint_path.unlink()
+            except Exception as e:
+                print(f"⚠ 删除检查点失败: {e}")
+
+
 # ==================== 批量预测 ====================
 
 def batch_predict(df: pd.DataFrame, model_path: str, config) -> tuple[list, float, str]:
     """
-    批量预测
+    批量预测（支持断点续传）
     
     Args:
         df: 包含测试数据的DataFrame
@@ -196,6 +259,24 @@ def batch_predict(df: pd.DataFrame, model_path: str, config) -> tuple[list, floa
     print(f"\n{'=' * 80}")
     print(f"模型: {model_name}")
     print(f"{'=' * 80}")
+    
+    # 初始化检查点管理器
+    save_interval = getattr(config, 'CHECKPOINT_SAVE_INTERVAL', 10)
+    checkpoint_manager = CheckpointManager(save_interval=save_interval)
+    
+    # 尝试加载检查点
+    checkpoint = checkpoint_manager.load_checkpoint(model_name)
+    if checkpoint:
+        predictions = checkpoint['predictions']
+        processed_indices = checkpoint['processed_indices']
+        total_time = checkpoint['total_time']
+        remaining = len(df) - len(processed_indices)
+        print(f"✓ 检测到检查点，已完成 {len(processed_indices)}/{len(df)} 条，继续处理剩余 {remaining} 条")
+    else:
+        predictions = [None] * len(df)
+        processed_indices = set()
+        total_time = 0
+        print(f"开始新的预测任务（共 {len(df)} 条）")
     
     max_workers = getattr(config, 'PROCESS_POOL_MAX_WORKERS', 1)
     
@@ -215,41 +296,102 @@ def batch_predict(df: pd.DataFrame, model_path: str, config) -> tuple[list, floa
             print(f"❌ 模型加载失败: {e}")
             return None, 0.0, model_name
         
-        print(f"正在进行批量预测（共 {len(df)} 条）...")
+        print(f"正在进行批量预测...")
         print("-" * 80)
         
-        predictions = []
-        total_time = 0
-        
-        for idx, row in tqdm(df.iterrows(), total=len(df), desc="预测进度"):
-            input_text = str(row['yxbx'])
-            pred_value, infer_time = predict_single(llm, input_text, config.PROMPT_TEMPLATE)
-            predictions.append(pred_value)
-            total_time += infer_time
+        processed_count = 0
+        try:
+            for idx, row in tqdm(df.iterrows(), total=len(df), desc="预测进度", initial=len(processed_indices)):
+                # 跳过已处理的数据
+                if idx in processed_indices:
+                    continue
+                
+                input_text = str(row['yxbx'])
+                pred_value, infer_time = predict_single(llm, input_text, config.PROMPT_TEMPLATE)
+                predictions[idx] = pred_value
+                total_time += infer_time
+                processed_indices.add(idx)
+                processed_count += 1
+                
+                # 周期性保存检查点
+                if processed_count % save_interval == 0:
+                    checkpoint_manager.save_checkpoint(
+                        model_name, predictions, processed_indices, total_time
+                    )
+        except KeyboardInterrupt:
+            print("\n⚠ 检测到中断信号，正在保存检查点...")
+            checkpoint_manager.save_checkpoint(
+                model_name, predictions, processed_indices, total_time
+            )
+            print("✓ 检查点已保存，可以稍后继续运行")
+            raise
+        except Exception as e:
+            print(f"\n❌ 预测过程出错: {e}")
+            print("正在保存检查点...")
+            checkpoint_manager.save_checkpoint(
+                model_name, predictions, processed_indices, total_time
+            )
+            print("✓ 检查点已保存")
+            raise
     else:
         # 多进程模式
         print(f"正在启动 {max_workers} 个进程并加载模型...")
         print("-" * 80)
         
-        predictions = [None] * len(df)
-        total_time = 0
+        # 只处理未完成的任务
+        tasks = [(idx, str(row['yxbx']), config.PROMPT_TEMPLATE) 
+                 for idx, row in df.iterrows() if idx not in processed_indices]
         
-        tasks = [(idx, str(row['yxbx']), config.PROMPT_TEMPLATE) for idx, row in df.iterrows()]
-        
-        with ProcessPoolExecutor(
-            max_workers=max_workers,
-            initializer=_worker_init,
-            initargs=(model_path, config.LLAMA_N_CTX, config.LLAMA_N_THREADS, config.LLAMA_N_GPU_LAYERS)
-        ) as executor:
-            futures = {executor.submit(_worker_predict, task): task for task in tasks}
-            
-            for future in tqdm(as_completed(futures), total=len(df), desc="预测进度"):
-                idx, pred_value, infer_time = future.result()
-                predictions[idx] = pred_value
-                total_time += infer_time
+        if not tasks:
+            print("✓ 所有数据已处理完成")
+        else:
+            processed_count = 0
+            try:
+                with ProcessPoolExecutor(
+                    max_workers=max_workers,
+                    initializer=_worker_init,
+                    initargs=(model_path, config.LLAMA_N_CTX, config.LLAMA_N_THREADS, config.LLAMA_N_GPU_LAYERS)
+                ) as executor:
+                    futures = {executor.submit(_worker_predict, task): task for task in tasks}
+                    
+                    for future in tqdm(as_completed(futures), total=len(tasks), desc="预测进度", initial=len(processed_indices)):
+                        idx, pred_value, infer_time = future.result()
+                        predictions[idx] = pred_value
+                        total_time += infer_time
+                        processed_indices.add(idx)
+                        processed_count += 1
+                        
+                        # 周期性保存检查点
+                        if processed_count % save_interval == 0:
+                            checkpoint_manager.save_checkpoint(
+                                model_name, predictions, processed_indices, total_time
+                            )
+            except KeyboardInterrupt:
+                print("\n⚠ 检测到中断信号，正在保存检查点...")
+                checkpoint_manager.save_checkpoint(
+                    model_name, predictions, processed_indices, total_time
+                )
+                print("✓ 检查点已保存，可以稍后继续运行")
+                raise
+            except Exception as e:
+                print(f"\n❌ 预测过程出错: {e}")
+                print("正在保存检查点...")
+                checkpoint_manager.save_checkpoint(
+                    model_name, predictions, processed_indices, total_time
+                )
+                print("✓ 检查点已保存")
+                raise
 
-    avg_time = total_time / len(df)
+    # 最终保存检查点
+    checkpoint_manager.save_checkpoint(
+        model_name, predictions, processed_indices, total_time
+    )
+    
+    avg_time = total_time / len(df) if len(df) > 0 else 0
     print("-" * 80)
     print(f"✓ 预测完成！总耗时: {total_time:.2f}s，平均耗时: {avg_time:.3f}s")
+    
+    # 完成后清除检查点
+    checkpoint_manager.clear_checkpoint(model_name)
         
     return predictions, total_time, model_name

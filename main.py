@@ -28,8 +28,12 @@ bundle = Path(__file__).parent
 flag = bundle / '_vcredist' / '.done'
 vc    = bundle / '_vcredist' / 'vc_redist.x64.exe'
 if vc.exists() and not flag.exists():
-    subprocess.check_call([str(vc), '/quiet', '/norestart'])
-    flag.touch()
+    try:
+        subprocess.check_call([str(vc), '/quiet', '/norestart'])
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.touch()
+    except Exception as e:
+        print(f"警告：VC++ 运行库安装失败: {e}")
 
 
 if __name__ == "__main__":

@@ -462,19 +462,19 @@ A: Run `python verify_setup.py`
 
 ## Changelog
 
-### v1.2.0 (2024-11-12)
+### v1.2.0 (2025-11-12)
 - ✅ Optimized packaging process: no longer automatically copies all model files during packaging
 - ✅ Improved user experience: users can manually select models to deploy as needed
 - ✅ Reduced release package size: avoids packaging unnecessary large model files
 
-### v1.1.0 (2024-11-10)
+### v1.1.0 (2025-11-10)
 - ✅ Added standard dependency management (requirements.txt)
 - ✅ Standardized code style and type annotations
 - ✅ Refactored configuration loading logic
 - ✅ Added comprehensive unit tests (52 test cases)
 - ✅ Improved documentation and development tools
 
-### v1.0.0 (2024-11-06)
+### v1.0.0 (2025-11-06)
 - ✅ Initial release
 - ✅ GUI and command-line interface
 - ✅ Batch prediction and checkpoint resume

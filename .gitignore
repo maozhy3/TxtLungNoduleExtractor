@@ -41,9 +41,13 @@ checkpoints/
 test*.xlsx
 release*/
 _vcredist/*.exe
+training/*.xlsx
+training/llama-b6945-bin-win-cpu-x64/
+training/llama.cpp-master/
 
 # Private configuration (user-specific settings)
 config_private.py
 
 # Logs
 *.log
+!training/bash.log
